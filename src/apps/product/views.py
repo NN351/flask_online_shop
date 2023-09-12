@@ -61,8 +61,51 @@ class ProductListView(ListView):
 
 
 
+    
+    def get_context_data(self, **kwargs):
+        category_slug = self.kwargs.get("category_slug")
+        subcategory_slug = self.kwargs.get("subcategory_slug")
+        text = ""
+        context = super().get_context_data(**kwargs)
+        if subcategory_slug:
+            subcategory = Category.objects.select_related("parent").get(slug=subcategory_slug)
+
+            if "Мужская" in subcategory.parent.name:
+                text = f"Мужские {subcategory.name}"
+            elif "Женская" in subcategory.parent.name:
+                text = f"Женские {subcategory.name}"
+            elif "Детская" in subcategory.parent.name:
+                text = f"Детские {subcategory.name}"
+
+        elif category_slug:
+            category = Category.objects.get(slug=category_slug)
+            text = category.name
+        
+        context["category_name"] = text
+        return context
+
+
 class ProductDetailView(DetailView):
     model = Product
     template_name = 'product_detail.html'
     queryset = Product.objects.filter(is_active=True)
     context_object_name = "product"
+
+
+
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def add_to_favorite(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    user =request.user
+    if product not in user.favorites.all():
+        user.favorites.add(product)
+    else:
+        user.favorites.remove(product)
+    return render(request, "favorites.html")
+
+@login_required
+def favorites_detail(request):
+    return render(request, "favorites.html")
